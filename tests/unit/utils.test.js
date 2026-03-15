@@ -9,7 +9,7 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 const utilsSrc = readFileSync(join(__dir, '../../utils.js'), 'utf8');
 const ctx = {};
 runInNewContext(utilsSrc, ctx);
-const { pageToFilename, pageToFolderName, buildPageIndex } = ctx;
+const { pageToFilename, pageToFolderName, buildPageIndex, computeRelativePath, rewriteInternalLinks } = ctx;
 
 describe('pageToFilename', () => {
   it('converts spaces to hyphens', () => {
@@ -36,6 +36,22 @@ describe('pageToFilename', () => {
 
   it('strips null bytes and control characters', () => {
     assert.equal(pageToFilename('Page\x00Name'), 'PageName.md');
+  });
+
+  it('falls back to Untitled when title is undefined', () => {
+    assert.equal(pageToFilename(undefined), 'Untitled.md');
+  });
+
+  it('falls back to Untitled when title is null', () => {
+    assert.equal(pageToFilename(null), 'Untitled.md');
+  });
+
+  it('falls back to Untitled when title is empty string', () => {
+    assert.equal(pageToFilename(''), 'Untitled.md');
+  });
+
+  it('falls back to Untitled when title is whitespace only', () => {
+    assert.equal(pageToFilename('   '), 'Untitled.md');
   });
 });
 
@@ -66,6 +82,22 @@ describe('buildPageIndex', () => {
     assert.equal(index.get('2').zipPath, 'Home/Parent/Child.md');
   });
 
+  it('handles pages with missing titles', () => {
+    const pages = [
+      { id: '1', title: undefined, ancestors: [] },
+      { id: '2', title: 'Child', ancestors: [{ title: undefined }] },
+    ];
+    const index = buildPageIndex(pages);
+    assert.equal(index.get('1').zipPath, 'Untitled.md');
+    assert.equal(index.get('2').zipPath, 'Untitled/Child.md');
+  });
+
+  it('handles pages with null titles', () => {
+    const pages = [{ id: '1', title: null, ancestors: [] }];
+    const index = buildPageIndex(pages);
+    assert.equal(index.get('1').zipPath, 'Untitled.md');
+  });
+
   it('indexes multiple pages', () => {
     const pages = [
       { id: '1', title: 'Home', ancestors: [] },
@@ -85,5 +117,64 @@ describe('buildPageIndex', () => {
     const index = buildPageIndex(pages);
     assert.equal(index.get('2').title, 'Sub: Page');
     assert.equal(index.get('2').zipPath, 'My-Page/Sub-Page.md');
+  });
+});
+
+describe('computeRelativePath', () => {
+  it('computes path in the same directory', () => {
+    assert.equal(computeRelativePath('Home/A.md', 'Home/B.md'), 'B.md');
+  });
+
+  it('computes path up one level', () => {
+    assert.equal(computeRelativePath('Home/Sub/Child.md', 'Home/Sibling.md'), '../Sibling.md');
+  });
+
+  it('computes deep cross-tree path', () => {
+    assert.equal(
+      computeRelativePath('Home/A/Deep.md', 'Home/B/Other/Target.md'),
+      '../B/Other/Target.md',
+    );
+  });
+
+  it('computes path from root to nested', () => {
+    assert.equal(computeRelativePath('Root.md', 'Home/Child.md'), 'Home/Child.md');
+  });
+
+  it('computes path from nested to root', () => {
+    assert.equal(computeRelativePath('Home/Child.md', 'Root.md'), '../Root.md');
+  });
+
+  it('returns filename for root-level self-reference', () => {
+    assert.equal(computeRelativePath('Page.md', 'Page.md'), 'Page.md');
+  });
+});
+
+describe('rewriteInternalLinks', () => {
+  it('rewrites known page link by pageId in path', () => {
+    const pageIndex = new Map([['123', { title: 'Target', zipPath: 'Home/Target.md' }]]);
+    const html = '<a href="/spaces/SPACE/pages/123/Target">Target</a>';
+    const result = rewriteInternalLinks(html, 'Home/Source.md', pageIndex);
+    assert.equal(result, '<a href="Target.md">Target</a>');
+  });
+
+  it('rewrites viewpage.action links', () => {
+    const pageIndex = new Map([['456', { title: 'Other', zipPath: 'Home/Sub/Other.md' }]]);
+    const html = '<a href="/pages/viewpage.action?pageId=456">Other</a>';
+    const result = rewriteInternalLinks(html, 'Home/Source.md', pageIndex);
+    assert.equal(result, '<a href="Sub/Other.md">Other</a>');
+  });
+
+  it('leaves unknown page links unchanged', () => {
+    const pageIndex = new Map();
+    const html = '<a href="/spaces/SPACE/pages/999/Unknown">Unknown</a>';
+    const result = rewriteInternalLinks(html, 'Home/Source.md', pageIndex);
+    assert.equal(result, html);
+  });
+
+  it('leaves external links unchanged', () => {
+    const pageIndex = new Map();
+    const html = '<a href="https://example.com">External</a>';
+    const result = rewriteInternalLinks(html, 'Home/Source.md', pageIndex);
+    assert.equal(result, html);
   });
 });
