@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Export a Confluence space to Markdown.",
   "scripts": {
-    "test": "eslint . && node --test tests/unit/**/*.test.js",
+    "test": "eslint . && node --test tests/unit/*.test.js",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
