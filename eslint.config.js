@@ -59,7 +59,7 @@ export default [
     },
   },
   {
-    files: ['tests/**/*.test.js'],
+    files: ['tests/**/*.js', 'playwright.config.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -70,7 +70,7 @@ export default [
     },
     rules: {
       'no-unused-vars': 'error',
-      'no-undef': 'error',
+      'no-undef': 'off', // Playwright globals (test, expect) come from imports
       'eqeqeq': 'error',
       'no-var': 'error',
       'prefer-const': 'error',
