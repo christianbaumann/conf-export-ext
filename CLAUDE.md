@@ -45,5 +45,8 @@ Unless following the boy scout rule: only do modifications requested.
 - `npm test` runs lint + unit tests together.
 - Fix all lint errors before committing; warnings must not increase.
 
+## Architecture Notes
+- **Download flow:** background.js (orchestration) → offscreen.js (HTML→MD conversion + download trigger). Downloads are triggered via anchor click in the offscreen document — not via `chrome.downloads.download()` in the service worker — because blob URLs created in one context don't honor the `filename` parameter when downloaded from a different context.
+
 ## Output
 Brief but precise, no bloat. Bullet points where appropriate.
