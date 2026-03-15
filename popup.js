@@ -3,10 +3,16 @@ const status = document.getElementById('status');
 const progressWrap = document.getElementById('progress-bar-wrap');
 const progressBar = document.getElementById('progress-bar');
 
-btn.addEventListener('click', () => {
+btn.addEventListener('click', async () => {
   btn.disabled = true;
   progressWrap.hidden = true;
   progressBar.style.width = '0%';
+
+  // Detect the active tab here, before the port message, so the background
+  // doesn't need to guess — the popup already knows its context. This is also
+  // required for reliable Playwright E2E testing where chrome.tabs.query in a
+  // service worker may return the wrong tab after a CDP evaluate call.
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
 
   const port = chrome.runtime.connect({ name: 'export' });
 
@@ -29,5 +35,5 @@ btn.addEventListener('click', () => {
     }
   });
 
-  port.postMessage({ action: 'start' });
+  port.postMessage({ action: 'start', tabId: tab?.id, tabUrl: tab?.url });
 });

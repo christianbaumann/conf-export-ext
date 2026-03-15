@@ -9,6 +9,7 @@ export const test = base.extend({
   context: async ({}, use) => {
     const context = await chromium.launchPersistentContext('', {
       headless: false,
+      acceptDownloads: true,
       args: [
         `--disable-extensions-except=${extensionPath}`,
         `--load-extension=${extensionPath}`,

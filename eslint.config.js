@@ -7,10 +7,12 @@ const browserGlobals = {
   fetch: 'readonly',
   console: 'readonly',
 };
-const swGlobals = {
-  importScripts: 'readonly',
+const offscreenGlobals = {
   TurndownService: 'readonly',
   turndownPluginGfm: 'readonly',
+};
+const swGlobals = {
+  importScripts: 'readonly',
   JSZip: 'readonly',
   fetch: 'readonly',
   URL: 'readonly',
@@ -18,10 +20,13 @@ const swGlobals = {
   Promise: 'readonly',
   Map: 'readonly',
   Set: 'readonly',
+  setTimeout: 'readonly',
   // from utils.js (loaded via importScripts)
   pageToFilename: 'readonly',
   pageToFolderName: 'readonly',
   buildPageIndex: 'readonly',
+  computeRelativePath: 'readonly',
+  rewriteInternalLinks: 'readonly',
 };
 
 export default [
@@ -29,11 +34,26 @@ export default [
     ignores: ['vendor/**', 'node_modules/**'],
   },
   {
-    files: ['popup.js', 'offscreen.js'],
+    files: ['popup.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
       globals: { ...chromeGlobal, ...browserGlobals },
+    },
+    rules: {
+      'no-unused-vars': 'error',
+      'no-undef': 'error',
+      'eqeqeq': 'error',
+      'no-var': 'error',
+      'prefer-const': 'error',
+    },
+  },
+  {
+    files: ['offscreen.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: { ...chromeGlobal, ...browserGlobals, ...offscreenGlobals },
     },
     rules: {
       'no-unused-vars': 'error',
