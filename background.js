@@ -112,7 +112,7 @@ async function downloadAttachments(html, baseUrl, zipFolderPath, zip) {
 
   let rewritten = html;
   for (const [originalUrl, { subdir, filename }] of urlsToDownload) {
-    const relPath = `./${subdir}/${filename}`;
+    const relPath = `./${subdir}/${escapeParensForMarkdown(filename)}`;
     rewritten = rewritten.split(originalUrl).join(relPath);
   }
 

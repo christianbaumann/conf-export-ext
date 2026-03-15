@@ -29,6 +29,7 @@ const swGlobals = {
   buildPageIndex: 'readonly',
   computeRelativePath: 'readonly',
   rewriteInternalLinks: 'readonly',
+  escapeParensForMarkdown: 'readonly',
 };
 
 export default [

@@ -9,7 +9,7 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 const utilsSrc = readFileSync(join(__dir, '../../utils.js'), 'utf8');
 const ctx = {};
 runInNewContext(utilsSrc, ctx);
-const { pageToFilename, pageToFolderName, buildPageIndex, computeRelativePath, rewriteInternalLinks } = ctx;
+const { pageToFilename, pageToFolderName, buildPageIndex, computeRelativePath, rewriteInternalLinks, escapeParensForMarkdown } = ctx;
 
 describe('pageToFilename', () => {
   it('converts spaces to hyphens', () => {
@@ -118,6 +118,38 @@ describe('buildPageIndex', () => {
     assert.equal(index.get('2').title, 'Sub: Page');
     assert.equal(index.get('2').zipPath, 'My-Page/Sub-Page.md');
   });
+
+  it('appends suffix for duplicate filenames in same parent', () => {
+    const pages = [
+      { id: '1', title: 'Page', ancestors: [] },
+      { id: '2', title: 'Page', ancestors: [] },
+    ];
+    const index = buildPageIndex(pages);
+    assert.equal(index.get('1').zipPath, 'Page.md');
+    assert.equal(index.get('2').zipPath, 'Page-2.md');
+  });
+
+  it('appends incrementing suffixes for three duplicates', () => {
+    const pages = [
+      { id: '1', title: 'Page', ancestors: [] },
+      { id: '2', title: 'Page', ancestors: [] },
+      { id: '3', title: 'Page', ancestors: [] },
+    ];
+    const index = buildPageIndex(pages);
+    assert.equal(index.get('1').zipPath, 'Page.md');
+    assert.equal(index.get('2').zipPath, 'Page-2.md');
+    assert.equal(index.get('3').zipPath, 'Page-3.md');
+  });
+
+  it('allows same filename in different parents without suffix', () => {
+    const pages = [
+      { id: '1', title: 'Page', ancestors: [{ title: 'A' }] },
+      { id: '2', title: 'Page', ancestors: [{ title: 'B' }] },
+    ];
+    const index = buildPageIndex(pages);
+    assert.equal(index.get('1').zipPath, 'A/Page.md');
+    assert.equal(index.get('2').zipPath, 'B/Page.md');
+  });
 });
 
 describe('computeRelativePath', () => {
@@ -176,5 +208,32 @@ describe('rewriteInternalLinks', () => {
     const html = '<a href="https://example.com">External</a>';
     const result = rewriteInternalLinks(html, 'Home/Source.md', pageIndex);
     assert.equal(result, html);
+  });
+});
+
+describe('escapeParensForMarkdown', () => {
+  it('encodes parentheses as percent-encoded equivalents', () => {
+    assert.equal(
+      escapeParensForMarkdown('E2E PoC draft (PI Planning).png'),
+      'E2E PoC draft %28PI Planning%29.png',
+    );
+  });
+
+  it('returns string unchanged when no parentheses', () => {
+    assert.equal(escapeParensForMarkdown('image.png'), 'image.png');
+  });
+
+  it('handles multiple pairs of parentheses', () => {
+    assert.equal(
+      escapeParensForMarkdown('file (a) (b).png'),
+      'file %28a%29 %28b%29.png',
+    );
+  });
+
+  it('handles nested parentheses', () => {
+    assert.equal(
+      escapeParensForMarkdown('file ((nested)).png'),
+      'file %28%28nested%29%29.png',
+    );
   });
 });
