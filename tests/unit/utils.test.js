@@ -9,7 +9,18 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 const utilsSrc = readFileSync(join(__dir, '../../utils.js'), 'utf8');
 const ctx = {};
 runInNewContext(utilsSrc + '\nthis.CONFLUENCE_EMOTICON_MAP = CONFLUENCE_EMOTICON_MAP;\nthis.replaceEmojis = replaceEmojis;\n', ctx);
-const { pageToFilename, pageToFolderName, buildPageIndex, computeRelativePath, rewriteInternalLinks, escapeParensForMarkdown, replaceEmojis, CONFLUENCE_EMOTICON_MAP } = ctx;
+const {
+  pageToFilename,
+  pageToFolderName,
+  buildPageIndex,
+  computeRelativePath,
+  rewriteInternalLinks,
+  escapeParensForMarkdown,
+  replaceEmojis,
+  CONFLUENCE_EMOTICON_MAP,
+  sanitizeZipPathSegment,
+  sanitizeZipFilename,
+} = ctx;
 
 describe('pageToFilename', () => {
   it('converts spaces to hyphens', () => {
@@ -38,6 +49,14 @@ describe('pageToFilename', () => {
     assert.equal(pageToFilename('Page\x00Name'), 'PageName.md');
   });
 
+  it('transliterates accented Latin characters to ASCII', () => {
+    assert.equal(pageToFilename('202603 João Santos'), '202603-Joao-Santos.md');
+  });
+
+  it('removes replacement characters from broken titles', () => {
+    assert.equal(pageToFilename('Jo\uFFFDo Santos'), 'Joo-Santos.md');
+  });
+
   it('falls back to Untitled when title is undefined', () => {
     assert.equal(pageToFilename(undefined), 'Untitled.md');
   });
@@ -62,6 +81,25 @@ describe('pageToFolderName', () => {
 
   it('applies same sanitization as pageToFilename', () => {
     assert.equal(pageToFolderName('A/B'), 'AB');
+  });
+});
+
+describe('sanitizeZipPathSegment', () => {
+  it('keeps safe ASCII punctuation used in current exports', () => {
+    assert.equal(
+      sanitizeZipPathSegment('Industry integration standards & needs (US analysis)'),
+      'Industry-integration-standards-&-needs-(US-analysis)',
+    );
+  });
+});
+
+describe('sanitizeZipFilename', () => {
+  it('preserves the extension while transliterating the basename', () => {
+    assert.equal(sanitizeZipFilename('Überblick final.pdf'), 'Uberblick-final.pdf');
+  });
+
+  it('falls back when the basename becomes empty', () => {
+    assert.equal(sanitizeZipFilename('?.png'), 'file.png');
   });
 });
 
@@ -117,6 +155,15 @@ describe('buildPageIndex', () => {
     const index = buildPageIndex(pages);
     assert.equal(index.get('2').title, 'Sub: Page');
     assert.equal(index.get('2').zipPath, 'My-Page/Sub-Page.md');
+  });
+
+  it('uses ASCII-safe paths for accented titles', () => {
+    const pages = [
+      { id: '1', title: 'Equipe', ancestors: [] },
+      { id: '2', title: '202603 João Santos', ancestors: [{ title: 'Equipe' }] },
+    ];
+    const index = buildPageIndex(pages);
+    assert.equal(index.get('2').zipPath, 'Equipe/202603-Joao-Santos.md');
   });
 
   it('appends suffix for duplicate filenames in same parent', () => {

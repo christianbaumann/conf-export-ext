@@ -1,3 +1,5 @@
+/* global sanitizeZipFilename, sanitizeZipPathSegment */
+
 importScripts('utils.js', 'vendor/jszip.min.js', 'vendor/emoji-map.js');
 
 const PAGE_LIMIT = 50;
@@ -84,8 +86,31 @@ async function htmlToMarkdown(html) {
 
 const ATTACHMENT_SRC_RE = /\/download\/(attachments|thumbnails)\/\d+\/([^?"]+)/;
 
+function reserveUniqueZipPath(localPath, pathsSeen) {
+  if (!pathsSeen.has(localPath)) {
+    pathsSeen.add(localPath);
+    return localPath;
+  }
+
+  const dotIndex = localPath.lastIndexOf('.');
+  const hasExtension = dotIndex > localPath.lastIndexOf('/');
+  const basename = hasExtension ? localPath.slice(0, dotIndex) : localPath;
+  const extension = hasExtension ? localPath.slice(dotIndex) : '';
+  let suffix = 2;
+  let candidate = `${basename}-${suffix}${extension}`;
+
+  while (pathsSeen.has(candidate)) {
+    suffix++;
+    candidate = `${basename}-${suffix}${extension}`;
+  }
+
+  pathsSeen.add(candidate);
+  return candidate;
+}
+
 async function downloadAttachments(html, baseUrl, zipFolderPath, zip) {
   const urlsToDownload = new Map();
+  const localPathsSeen = new Set();
 
   const srcRe = /(src|href)="([^"]*\/download\/(attachments|thumbnails)\/[^"]+)"/gi;
   let m;
@@ -94,9 +119,12 @@ async function downloadAttachments(html, baseUrl, zipFolderPath, zip) {
     const fullUrl = m[2];
     const match = fullUrl.match(ATTACHMENT_SRC_RE);
     if (!match) continue;
-    const filename = decodeURIComponent(match[2]);
+    const filename = sanitizeZipFilename(decodeURIComponent(match[2]));
     const subdir = attr.toLowerCase() === 'src' ? 'images' : 'attachments';
-    const localPath = zipFolderPath ? `${zipFolderPath}/${subdir}/${filename}` : `${subdir}/${filename}`;
+    const localPath = reserveUniqueZipPath(
+      zipFolderPath ? `${zipFolderPath}/${subdir}/${filename}` : `${subdir}/${filename}`,
+      localPathsSeen,
+    );
     urlsToDownload.set(fullUrl, { localPath, subdir, filename });
   }
 
@@ -190,7 +218,7 @@ async function triggerDownload(zip, filename) {
 }
 
 function sanitizeSpaceName(spaceName) {
-  return spaceName.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, '-');
+  return sanitizeZipPathSegment(spaceName, 'Confluence-Export');
 }
 
 async function runExport(port, tabId, tabUrl) {

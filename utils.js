@@ -1,14 +1,44 @@
-/* exported pageToFilename, pageToFolderName, buildPageIndex, computeRelativePath, rewriteInternalLinks, escapeParensForMarkdown, replaceEmojis, CONFLUENCE_EMOTICON_MAP */
+/* exported pageToFilename, pageToFolderName, buildPageIndex, computeRelativePath, rewriteInternalLinks, escapeParensForMarkdown, replaceEmojis, CONFLUENCE_EMOTICON_MAP, sanitizeZipPathSegment, sanitizeZipFilename */
 
 const UNSAFE_CHARS = /[<>:"/\\|?*\x00-\x1F]/g;
+const COMBINING_MARKS = /[\u0300-\u036f]/g;
+const NON_ASCII_CHARS = /[^A-Za-z0-9!#$%&'()+,.;=@[\]^_`{}~ -]/g;
 const FALLBACK_TITLE = 'Untitled';
+const FALLBACK_ATTACHMENT_NAME = 'file';
 
-function pageToFilename(title) {
-  const safe = (title ?? '').trim() || FALLBACK_TITLE;
-  return safe
+function sanitizeZipPathSegment(value, fallback = FALLBACK_TITLE) {
+  const safe = (value ?? '')
+    .normalize('NFKD')
+    .replace(COMBINING_MARKS, '')
+    .replace(/\uFFFD/g, '')
     .replace(UNSAFE_CHARS, '')
+    .replace(NON_ASCII_CHARS, '-')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return safe || fallback;
+}
+
+function sanitizeZipFilename(filename, fallback = FALLBACK_ATTACHMENT_NAME) {
+  const safe = (filename ?? '').trim();
+  const dotIndex = safe.lastIndexOf('.');
+  const hasExtension = dotIndex > 0 && dotIndex < safe.length - 1;
+  const basename = hasExtension ? safe.slice(0, dotIndex) : safe;
+  const extension = hasExtension
+    ? safe
+      .slice(dotIndex + 1)
+      .normalize('NFKD')
+      .replace(COMBINING_MARKS, '')
+      .replace(/\uFFFD/g, '')
+      .replace(/[^A-Za-z0-9]/g, '')
+    : '';
+  const safeBasename = sanitizeZipPathSegment(basename, fallback);
+  return extension ? `${safeBasename}.${extension}` : safeBasename;
+}
+
+function pageToFilename(title) {
+  return sanitizeZipPathSegment(title)
     .slice(0, 200)
     + '.md';
 }

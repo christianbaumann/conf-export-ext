@@ -271,6 +271,30 @@ test.describe('Zip content verification', () => {
     expect(progress.maxWidth).toBeGreaterThan(0);
     await expect(popup.locator('#progress-bar-wrap')).toBeHidden({ timeout: 500 });
   });
+
+  test('zip paths are ASCII-safe for accented page and attachment names', async ({ context, extensionId }) => {
+    const unicodePages = [
+      { id: '200', title: 'Equipe', ancestors: [] },
+      { id: '201', title: '202603 João Santos', ancestors: [{ id: '200', title: 'Equipe' }] },
+    ];
+    const unicodeContent = {
+      '200': '<h1>Equipe</h1>',
+      '201': '<p><a href="/download/attachments/201/Überblick final.pdf">PDF</a></p>',
+    };
+
+    await context.route(
+      `${MOCK_BASE}/**`,
+      buildMockRouter(unicodePages, unicodeContent, {
+        attachmentBodies: { 'Überblick final.pdf': Buffer.from('pdf-body') },
+      }),
+    );
+
+    const { zip } = await triggerExportAndCapture(context, extensionId);
+    const allPaths = Object.keys(zip.files);
+
+    expect(allPaths).toContain('Equipe/202603-Joao-Santos.md');
+    expect(allPaths).toContain('Equipe/attachments/Uberblick-final.pdf');
+  });
 });
 
 test.describe('Error handling', () => {
