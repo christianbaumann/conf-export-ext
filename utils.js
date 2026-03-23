@@ -47,11 +47,12 @@ function pageToFolderName(title) {
   return pageToFilename(title).replace(/\.md$/, '');
 }
 
-function buildPageIndex(pages) {
+function buildPageIndex(pages, rootFolder) {
   const index = new Map();
   const pathsSeen = new Set();
   for (const page of pages) {
     const folderParts = page.ancestors.map(a => pageToFolderName(a.title));
+    if (rootFolder) folderParts.unshift(rootFolder);
     let filename = pageToFilename(page.title);
     let candidate = [...folderParts, filename].join('/');
     let suffix = 2;

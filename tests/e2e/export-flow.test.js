@@ -142,26 +142,26 @@ test.describe('Zip content verification', () => {
     const { zip } = await triggerExportAndCapture(context, extensionId);
 
     const paths = Object.keys(zip.files).filter(p => p.endsWith('.md'));
-    expect(paths).toContain('Home.md');
-    expect(paths).toContain('Home/Child-Page.md');
-    expect(paths).toContain('Home/Child-Page/Grandchild.md');
+    expect(paths).toContain('Test-Space/Home.md');
+    expect(paths).toContain('Test-Space/Home/Child-Page.md');
+    expect(paths).toContain('Test-Space/Home/Child-Page/Grandchild.md');
   });
 
   test('internal links are rewritten to relative .md paths', async ({ context, extensionId }) => {
     await context.route(`${MOCK_BASE}/**`, buildMockRouter(PAGES, CONTENT));
     const { zip } = await triggerExportAndCapture(context, extensionId);
 
-    const homeMd = await zip.file('Home.md').async('string');
+    const homeMd = await zip.file('Test-Space/Home.md').async('string');
     // Root → Child: relative path from root
     expect(homeMd).toContain('Home/Child-Page.md');
     expect(homeMd).not.toContain('/spaces/TEST/pages/101');
 
-    const childMd = await zip.file('Home/Child-Page.md').async('string');
+    const childMd = await zip.file('Test-Space/Home/Child-Page.md').async('string');
     // Child → Grandchild: relative path within same parent folder
     expect(childMd).toContain('Child-Page/Grandchild.md');
     expect(childMd).not.toContain('pageId=102');
 
-    const grandchildMd = await zip.file('Home/Child-Page/Grandchild.md').async('string');
+    const grandchildMd = await zip.file('Test-Space/Home/Child-Page/Grandchild.md').async('string');
     // Grandchild → Root: two levels up
     expect(grandchildMd).toContain('../../Home.md');
     expect(grandchildMd).not.toContain('/spaces/TEST/pages/100');
@@ -173,25 +173,24 @@ test.describe('Zip content verification', () => {
 
     const allPaths = Object.keys(zip.files);
 
-    // Root-level page image: no leading slash
-    expect(allPaths).toContain('images/diagram.png');
-    expect(allPaths).not.toEqual(expect.arrayContaining(['/images/diagram.png']));
-    const imgData = await zip.file('images/diagram.png').async('string');
+    // Root-level page image: inside space folder
+    expect(allPaths).toContain('Test-Space/images/diagram.png');
+    const imgData = await zip.file('Test-Space/images/diagram.png').async('string');
     expect(imgData).toBe('binary-diagram.png');
 
     // Grandchild image
-    expect(allPaths).toContain('Home/Child-Page/images/photo.jpg');
+    expect(allPaths).toContain('Test-Space/Home/Child-Page/images/photo.jpg');
   });
 
   test('image references in markdown use relative local paths', async ({ context, extensionId }) => {
     await context.route(`${MOCK_BASE}/**`, buildMockRouter(PAGES, CONTENT));
     const { zip } = await triggerExportAndCapture(context, extensionId);
 
-    const homeMd = await zip.file('Home.md').async('string');
+    const homeMd = await zip.file('Test-Space/Home.md').async('string');
     expect(homeMd).toContain('./images/diagram.png');
     expect(homeMd).not.toContain('/download/attachments/100');
 
-    const grandchildMd = await zip.file('Home/Child-Page/Grandchild.md').async('string');
+    const grandchildMd = await zip.file('Test-Space/Home/Child-Page/Grandchild.md').async('string');
     expect(grandchildMd).toContain('./images/photo.jpg');
     expect(grandchildMd).not.toContain('/download/attachments/102');
   });
@@ -201,12 +200,12 @@ test.describe('Zip content verification', () => {
     const { zip } = await triggerExportAndCapture(context, extensionId);
 
     const allPaths = Object.keys(zip.files);
-    expect(allPaths).toContain('Home/attachments/report.pdf');
+    expect(allPaths).toContain('Test-Space/Home/attachments/report.pdf');
 
-    const pdfData = await zip.file('Home/attachments/report.pdf').async('string');
+    const pdfData = await zip.file('Test-Space/Home/attachments/report.pdf').async('string');
     expect(pdfData).toBe('binary-report.pdf');
 
-    const childMd = await zip.file('Home/Child-Page.md').async('string');
+    const childMd = await zip.file('Test-Space/Home/Child-Page.md').async('string');
     expect(childMd).toContain('./attachments/report.pdf');
     expect(childMd).not.toContain('/download/attachments/101');
   });
@@ -215,10 +214,10 @@ test.describe('Zip content verification', () => {
     await context.route(`${MOCK_BASE}/**`, buildMockRouter(PAGES, CONTENT));
     const { zip } = await triggerExportAndCapture(context, extensionId);
 
-    const homeMd = await zip.file('Home.md').async('string');
+    const homeMd = await zip.file('Test-Space/Home.md').async('string');
     expect(homeMd).toMatch(/^# Home/m);
 
-    const childMd = await zip.file('Home/Child-Page.md').async('string');
+    const childMd = await zip.file('Test-Space/Home/Child-Page.md').async('string');
     expect(childMd).toMatch(/^## Child/m);
   });
 
@@ -292,8 +291,8 @@ test.describe('Zip content verification', () => {
     const { zip } = await triggerExportAndCapture(context, extensionId);
     const allPaths = Object.keys(zip.files);
 
-    expect(allPaths).toContain('Equipe/202603-Joao-Santos.md');
-    expect(allPaths).toContain('Equipe/attachments/Uberblick-final.pdf');
+    expect(allPaths).toContain('Test-Space/Equipe/202603-Joao-Santos.md');
+    expect(allPaths).toContain('Test-Space/Equipe/attachments/Uberblick-final.pdf');
   });
 });
 
@@ -346,7 +345,7 @@ test.describe('Emoji replacement', () => {
     await context.route(`${MOCK_BASE}/**`, buildMockRouter(pages, content));
     const { zip } = await triggerExportAndCapture(context, extensionId);
 
-    const homeMd = await zip.file('Home.md').async('string');
+    const homeMd = await zip.file('Test-Space/Home.md').async('string');
     expect(homeMd).toContain('✅');
     expect(homeMd).toContain('🎉');
     expect(homeMd).not.toContain('emoticons/check');
@@ -369,7 +368,7 @@ test.describe('Cross-space and unknown links', () => {
     await context.route(`${MOCK_BASE}/**`, buildMockRouter(pages, content));
     const { zip } = await triggerExportAndCapture(context, extensionId);
 
-    const homeMd = await zip.file('Home.md').async('string');
+    const homeMd = await zip.file('Test-Space/Home.md').async('string');
     // Unknown pageId link should be preserved as original Confluence URL
     expect(homeMd).toContain('/spaces/OTHER/pages/999/External-Page');
     // External links should also be preserved
@@ -394,12 +393,12 @@ test.describe('Duplicate-title pages', () => {
     const { zip } = await triggerExportAndCapture(context, extensionId);
 
     const paths = Object.keys(zip.files).filter(p => p.endsWith('.md'));
-    expect(paths).toContain('Home/FAQ.md');
-    expect(paths).toContain('Home/FAQ-2.md');
+    expect(paths).toContain('Test-Space/Home/FAQ.md');
+    expect(paths).toContain('Test-Space/Home/FAQ-2.md');
 
     // Verify both have distinct content
-    const faq1 = await zip.file('Home/FAQ.md').async('string');
-    const faq2 = await zip.file('Home/FAQ-2.md').async('string');
+    const faq1 = await zip.file('Test-Space/Home/FAQ.md').async('string');
+    const faq2 = await zip.file('Test-Space/Home/FAQ-2.md').async('string');
     expect(faq1).toContain('First FAQ page');
     expect(faq2).toContain('Second FAQ page');
   });
@@ -514,7 +513,7 @@ test.describe('Large zip chunked transfer', () => {
     const { zip, zips } = await triggerExportAndCapture(context, extensionId);
 
     expect(zips.length).toBe(1);
-    const imgData = await zip.file('images/big.png').async('uint8array');
+    const imgData = await zip.file('Test-Space/images/big.png').async('uint8array');
     expect(imgData.length).toBe(4096);
     expect(imgData[0]).toBe(0x42);
 

@@ -106,18 +106,18 @@ describe('sanitizeZipFilename', () => {
 describe('buildPageIndex', () => {
   it('indexes a root-level page with no ancestors', () => {
     const pages = [{ id: '1', title: 'Home', ancestors: [] }];
-    const index = buildPageIndex(pages);
+    const index = buildPageIndex(pages, 'Space');
     assert.equal(index.get('1').title, 'Home');
-    assert.equal(index.get('1').zipPath, 'Home.md');
+    assert.equal(index.get('1').zipPath, 'Space/Home.md');
   });
 
   it('builds nested path from ancestors', () => {
     const pages = [
       { id: '2', title: 'Child', ancestors: [{ title: 'Home' }, { title: 'Parent' }] },
     ];
-    const index = buildPageIndex(pages);
+    const index = buildPageIndex(pages, 'Space');
     assert.equal(index.get('2').title, 'Child');
-    assert.equal(index.get('2').zipPath, 'Home/Parent/Child.md');
+    assert.equal(index.get('2').zipPath, 'Space/Home/Parent/Child.md');
   });
 
   it('handles pages with missing titles', () => {
@@ -125,15 +125,15 @@ describe('buildPageIndex', () => {
       { id: '1', title: undefined, ancestors: [] },
       { id: '2', title: 'Child', ancestors: [{ title: undefined }] },
     ];
-    const index = buildPageIndex(pages);
-    assert.equal(index.get('1').zipPath, 'Untitled.md');
-    assert.equal(index.get('2').zipPath, 'Untitled/Child.md');
+    const index = buildPageIndex(pages, 'Space');
+    assert.equal(index.get('1').zipPath, 'Space/Untitled.md');
+    assert.equal(index.get('2').zipPath, 'Space/Untitled/Child.md');
   });
 
   it('handles pages with null titles', () => {
     const pages = [{ id: '1', title: null, ancestors: [] }];
-    const index = buildPageIndex(pages);
-    assert.equal(index.get('1').zipPath, 'Untitled.md');
+    const index = buildPageIndex(pages, 'Space');
+    assert.equal(index.get('1').zipPath, 'Space/Untitled.md');
   });
 
   it('indexes multiple pages', () => {
@@ -141,10 +141,10 @@ describe('buildPageIndex', () => {
       { id: '1', title: 'Home', ancestors: [] },
       { id: '2', title: 'Child', ancestors: [{ title: 'Home' }] },
     ];
-    const index = buildPageIndex(pages);
+    const index = buildPageIndex(pages, 'Space');
     assert.equal(index.size, 2);
-    assert.equal(index.get('1').zipPath, 'Home.md');
-    assert.equal(index.get('2').zipPath, 'Home/Child.md');
+    assert.equal(index.get('1').zipPath, 'Space/Home.md');
+    assert.equal(index.get('2').zipPath, 'Space/Home/Child.md');
   });
 
   it('sanitizes titles in paths', () => {
@@ -152,9 +152,9 @@ describe('buildPageIndex', () => {
       { id: '1', title: 'My Page', ancestors: [] },
       { id: '2', title: 'Sub: Page', ancestors: [{ title: 'My Page' }] },
     ];
-    const index = buildPageIndex(pages);
+    const index = buildPageIndex(pages, 'Space');
     assert.equal(index.get('2').title, 'Sub: Page');
-    assert.equal(index.get('2').zipPath, 'My-Page/Sub-Page.md');
+    assert.equal(index.get('2').zipPath, 'Space/My-Page/Sub-Page.md');
   });
 
   it('uses ASCII-safe paths for accented titles', () => {
@@ -162,8 +162,8 @@ describe('buildPageIndex', () => {
       { id: '1', title: 'Equipe', ancestors: [] },
       { id: '2', title: '202603 João Santos', ancestors: [{ title: 'Equipe' }] },
     ];
-    const index = buildPageIndex(pages);
-    assert.equal(index.get('2').zipPath, 'Equipe/202603-Joao-Santos.md');
+    const index = buildPageIndex(pages, 'Space');
+    assert.equal(index.get('2').zipPath, 'Space/Equipe/202603-Joao-Santos.md');
   });
 
   it('appends suffix for duplicate filenames in same parent', () => {
@@ -171,9 +171,9 @@ describe('buildPageIndex', () => {
       { id: '1', title: 'Page', ancestors: [] },
       { id: '2', title: 'Page', ancestors: [] },
     ];
-    const index = buildPageIndex(pages);
-    assert.equal(index.get('1').zipPath, 'Page.md');
-    assert.equal(index.get('2').zipPath, 'Page-2.md');
+    const index = buildPageIndex(pages, 'Space');
+    assert.equal(index.get('1').zipPath, 'Space/Page.md');
+    assert.equal(index.get('2').zipPath, 'Space/Page-2.md');
   });
 
   it('appends incrementing suffixes for three duplicates', () => {
@@ -182,10 +182,10 @@ describe('buildPageIndex', () => {
       { id: '2', title: 'Page', ancestors: [] },
       { id: '3', title: 'Page', ancestors: [] },
     ];
-    const index = buildPageIndex(pages);
-    assert.equal(index.get('1').zipPath, 'Page.md');
-    assert.equal(index.get('2').zipPath, 'Page-2.md');
-    assert.equal(index.get('3').zipPath, 'Page-3.md');
+    const index = buildPageIndex(pages, 'Space');
+    assert.equal(index.get('1').zipPath, 'Space/Page.md');
+    assert.equal(index.get('2').zipPath, 'Space/Page-2.md');
+    assert.equal(index.get('3').zipPath, 'Space/Page-3.md');
   });
 
   it('allows same filename in different parents without suffix', () => {
@@ -193,67 +193,67 @@ describe('buildPageIndex', () => {
       { id: '1', title: 'Page', ancestors: [{ title: 'A' }] },
       { id: '2', title: 'Page', ancestors: [{ title: 'B' }] },
     ];
-    const index = buildPageIndex(pages);
-    assert.equal(index.get('1').zipPath, 'A/Page.md');
-    assert.equal(index.get('2').zipPath, 'B/Page.md');
+    const index = buildPageIndex(pages, 'Space');
+    assert.equal(index.get('1').zipPath, 'Space/A/Page.md');
+    assert.equal(index.get('2').zipPath, 'Space/B/Page.md');
   });
 });
 
 describe('computeRelativePath', () => {
   it('computes path in the same directory', () => {
-    assert.equal(computeRelativePath('Home/A.md', 'Home/B.md'), 'B.md');
+    assert.equal(computeRelativePath('Space/Home/A.md', 'Space/Home/B.md'), 'B.md');
   });
 
   it('computes path up one level', () => {
-    assert.equal(computeRelativePath('Home/Sub/Child.md', 'Home/Sibling.md'), '../Sibling.md');
+    assert.equal(computeRelativePath('Space/Home/Sub/Child.md', 'Space/Home/Sibling.md'), '../Sibling.md');
   });
 
   it('computes deep cross-tree path', () => {
     assert.equal(
-      computeRelativePath('Home/A/Deep.md', 'Home/B/Other/Target.md'),
+      computeRelativePath('Space/Home/A/Deep.md', 'Space/Home/B/Other/Target.md'),
       '../B/Other/Target.md',
     );
   });
 
-  it('computes path from root to nested', () => {
-    assert.equal(computeRelativePath('Root.md', 'Home/Child.md'), 'Home/Child.md');
+  it('computes path from space root to nested', () => {
+    assert.equal(computeRelativePath('Space/Root.md', 'Space/Home/Child.md'), 'Home/Child.md');
   });
 
-  it('computes path from nested to root', () => {
-    assert.equal(computeRelativePath('Home/Child.md', 'Root.md'), '../Root.md');
+  it('computes path from nested to space root', () => {
+    assert.equal(computeRelativePath('Space/Home/Child.md', 'Space/Root.md'), '../Root.md');
   });
 
-  it('returns filename for root-level self-reference', () => {
-    assert.equal(computeRelativePath('Page.md', 'Page.md'), 'Page.md');
+  it('returns filename for self-reference in space root', () => {
+    assert.equal(computeRelativePath('Space/Page.md', 'Space/Page.md'), 'Page.md');
   });
 });
 
 describe('rewriteInternalLinks', () => {
   it('rewrites known page link by pageId in path', () => {
-    const pageIndex = new Map([['123', { title: 'Target', zipPath: 'Home/Target.md' }]]);
+    const pageIndex = new Map([['123', { title: 'Target', zipPath: 'Space/Home/Target.md' }]]);
     const html = '<a href="/spaces/SPACE/pages/123/Target">Target</a>';
-    const result = rewriteInternalLinks(html, 'Home/Source.md', pageIndex);
+    const result = rewriteInternalLinks(html, 'Space/Home/Source.md', pageIndex);
     assert.equal(result, '<a href="Target.md">Target</a>');
   });
 
   it('rewrites viewpage.action links', () => {
-    const pageIndex = new Map([['456', { title: 'Other', zipPath: 'Home/Sub/Other.md' }]]);
+    const pageIndex = new Map([['456', { title: 'Other', zipPath: 'Space/Home/Sub/Other.md' }]]);
     const html = '<a href="/pages/viewpage.action?pageId=456">Other</a>';
-    const result = rewriteInternalLinks(html, 'Home/Source.md', pageIndex);
+    const result = rewriteInternalLinks(html, 'Space/Home/Source.md', pageIndex);
     assert.equal(result, '<a href="Sub/Other.md">Other</a>');
   });
 
   it('leaves unknown page links unchanged', () => {
     const pageIndex = new Map();
     const html = '<a href="/spaces/SPACE/pages/999/Unknown">Unknown</a>';
-    const result = rewriteInternalLinks(html, 'Home/Source.md', pageIndex);
+    const result = rewriteInternalLinks(html, 'Space/Home/Source.md', pageIndex);
     assert.equal(result, html);
   });
 
   it('leaves external links unchanged', () => {
     const pageIndex = new Map();
     const html = '<a href="https://example.com">External</a>';
-    const result = rewriteInternalLinks(html, 'Home/Source.md', pageIndex);
+    const result = rewriteInternalLinks(html, 'Space/Home/Source.md', pageIndex);
     assert.equal(result, html);
   });
 });
