@@ -233,11 +233,10 @@ async function runExport(port, tabId, tabUrl) {
     safePostMessage(port, { type: 'progress', message: `Found ${count} pages…` });
   });
 
-  const pageIndex = buildPageIndex(pages);
+  const safeName = sanitizeSpaceName(spaceName);
+  const pageIndex = buildPageIndex(pages, safeName);
 
   await ensureOffscreenDocument();
-
-  const safeName = sanitizeSpaceName(spaceName);
   const chunks = [];
   for (let i = 0; i < pages.length; i += ZIP_CHUNK_SIZE) {
     chunks.push(pages.slice(i, i + ZIP_CHUNK_SIZE));
