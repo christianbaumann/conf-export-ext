@@ -48,6 +48,7 @@ Unless following the boy scout rule: only do modifications requested.
 ## Architecture Notes
 - **Download flow:** background.js (orchestration) → offscreen.js (HTML→MD conversion + download trigger). Downloads are triggered via anchor click in the offscreen document — not via `chrome.downloads.download()` in the service worker — because blob URLs created in one context don't honor the `filename` parameter when downloaded from a different context.
 - **Zip root folder:** All zip paths are prefixed with the sanitized space name (via `buildPageIndex(pages, rootFolder)`). This ensures chunked exports (multiple ZIPs) all share the same root folder and merge into one directory when extracted by macOS Archive Utility.
+- **Chrome MV3 lifecycle resilience:** The service worker and offscreen document can both be terminated by Chrome independently (e.g. when the popup closes on focus loss). `htmlToMarkdown()` re-creates the offscreen document on failed retries, and `runExport()` uses a keepalive interval to prevent service worker termination.
 
 ## Output
 Brief but precise, no bloat. Bullet points where appropriate.
